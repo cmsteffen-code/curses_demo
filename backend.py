@@ -22,6 +22,8 @@ class Backend(threading.Thread):
         self.port = port
         self.input_queue = input_queue
         self.output_queue = output_queue
+        self.input_buffer = bytes()
+        self.output_buffer = bytes()
         self.selector = selectors.DefaultSelector()
         self.running = False
 
@@ -46,16 +48,24 @@ class Backend(threading.Thread):
         if mask & selectors.EVENT_WRITE:
             # Handle input from the user.
             try:
-                input = self.input_queue.get_nowait()
-                if input == ';quit':
+                self.input_buffer = self.input_queue.get_nowait()
+                if self.input_buffer == ';quit':
                     self.running = False
-                else:
-                    sock.send(f"{input[:998]}\r\n".encode())
+                    self.input_buffer = bytes()
+                while self.input_buffer:
+                    sock.send(self.input_buffer[:1024].encode())
+                    self.input_buffer = self.input_buffer[1024:]
+                    if not self.input_buffer:
+                        sock.send(b'\n')
             except queue.Empty:
                 pass
         if mask & selectors.EVENT_READ:
             # Handle output from the server.
             data = sock.recv(4096)
+            while len(data) == 4096:
+                self.output_buffer += data
+                data = sock.recv(4096)
+            self.output_buffer += data
             if not data:
                 self.running = False
             else:
