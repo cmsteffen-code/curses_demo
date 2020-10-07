@@ -265,9 +265,9 @@ class UserInterface:
         for index, line in enumerate(output_lines[:max_rows]):
             if len(line) >= max_cols and index == 0:
                 self.window["output"].insch(
-                    max_rows - 1, max_cols - 1, line[max_cols - 1 :][0]
+                    max_rows - 1, max_cols - 1, line[-1:][0]
                 )
-                line = line[: max_cols - 1]
+                line = line[:-1]
             self.window["output"].addstr(max_rows - (index + 1), 0, line)
         self.window["output"].noutrefresh()
 
